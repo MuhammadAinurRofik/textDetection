@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deteksi Teks dari Gambar</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Deteksi Teks pada Gambar</h1>
+        <p>Unggah Gambar atau Seret dan Lepaskan di area berikut untuk memulai.</p>
+
+        <div id="dropZone" class="drop-zone">
+            <p1>Seret dan Lepaskan gambar anda disini</p1>
+        </div>
+
+        <label for="imageInput" class="button-upload">Unggah Gambar</label>
+        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                
+
+        <div class="image-container">
+            <img id="uploadedImage" alt="Gambar yang diunggah">
+        </div>
+
+        <div class="container-crop-button">
+            <button id="cropButton">Potong</button>
+            <div class="crop-container">
+                <img id="croppedImage" alt="Hasil Crop">
+            </div>
+        </div>
+
+        <div class="button-container">
+            <button id="detectButton">Deteksi Teks</button>
+        </div>
+        <div id="resultText"></div>
+
+        <div class="button-container">
+            <button id="copyTextButton">Salin Teks</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.11/cropper.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const croppedImage = document.getElementById('croppedImage');
+        const cropButton = document.getElementById('cropButton');
+        const detectButton = document.getElementById('detectButton');
+        const resultText = document.getElementById('resultText');
+        const copyTextButton = document.getElementById('copyTextButton');
+        const dropZone = document.getElementById('dropZone');
+        let cropper;
+
+        imageInput.addEventListener('change', function () {
+            uploadedImage.src = URL.createObjectURL(this.files[0]);
+            uploadedImage.style.display = 'block';
+            cropper = new Cropper(uploadedImage, {
+                aspectRatio: NaN,
+                viewMode: 1,
+            });
+        });
+
+        cropButton.addEventListener('click', function () {
+            const croppedDataUrl = cropper.getCroppedCanvas().toDataURL();
+            croppedImage.src = croppedDataUrl;
+            croppedImage.style.display = 'block';
+        });
+
+        detectButton.addEventListener('click', function () {
+            const selectedImage = croppedImage.style.display === 'block' ? croppedImage : uploadedImage;
+
+            Tesseract.recognize(
+                selectedImage.src,
+                'eng', 'ind',
+                { logger: info => console.log(info) }
+            ).then(({ data: { text } }) => {
+                resultText.textContent = text;
+            });
+        });
+
+        function copyTextToClipboard() {
+            const textToCopy = resultText.textContent;
+            const tempInput = document.createElement('input');
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            tempInput.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+        }
+
+        resultText.addEventListener('input', function () {
+            if (resultText.textContent.length > 0) {
+                copyTextButton.style.display = 'inline-block';
+            } else {
+                copyTextButton.style.display = 'none';
+            }
+        });
+
+        copyTextButton.addEventListener('click', copyTextToClipboard);
+
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+
+            const droppedFile = e.dataTransfer.files[0];
+
+            if (droppedFile.type.startsWith('image/')) {
+                uploadedImage.src = URL.createObjectURL(droppedFile);
+                uploadedImage.style.display = 'block';
+                cropper = new Cropper(uploadedImage, {
+                    aspectRatio: NaN,
+                    viewMode: 1,
+                });
+            } else {
+                alert('Hanya file gambar yang diizinkan.');
+            }
+        });
+    </script>
+</body>
+</html>
